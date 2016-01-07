@@ -1,6 +1,6 @@
 #coding:utf-8
 from django.views.generic import ListView
-
+from pdf_gen import GenPDF
 #采用post方法请求pdf文件，使用ListView试图，覆盖post方法
 class ObjectListView(ListView):
     context_object_name = 'object_list'
