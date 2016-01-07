@@ -1,0 +1,135 @@
+#coding:utf-8
+from django.shortcuts import render_to_response
+from django.http import HttpResponseRedirect,HttpResponse
+from django.views.generic.edit import CreateView,UpdateView,DeleteView
+from django.views.generic import DetailView,ListView
+from django.template import RequestContext
+from django.core.urlresolvers import reverse_lazy
+
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import get_model
+
+from myadmin import admin_settings
+from myadmin.pdf_gen import GenPDF
+
+from django.contrib.auth.decorators import login_required  
+from django.contrib.auth import authenticate, login,logout
+
+LOGIN_URL = "/myadmin/login/"
+PAGE_NUM = 20
+# Create your views here.
+
+def Login(request,template_name='myadmin/login.html'):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            login(request, user)
+        return HttpResponseRedirect(reverse_lazy('admin_index'))
+    else:
+        return render_to_response(template_name)
+
+def Logout(request):
+    logout(request)
+    return HttpResponseRedirect(reverse_lazy('admin_login'))
+
+class AppListView(ListView):
+    context_object_name = 'object_list'
+    paginate_by = PAGE_NUM
+    def get_context_data(self,**kwargs):
+        label = self.kwargs.get('label','')
+        kwargs['column_name_list'] = ['model']
+        kwargs['table_name'] = label
+        kwargs['label_name'] = label  
+        print kwargs  
+        return super(AppListView,self).get_context_data(**kwargs)
+
+
+class ObjectListView(ListView):
+    context_object_name = 'object_list'
+    paginate_by = PAGE_NUM
+    def get_context_data(self,**kwargs):
+        name = self.kwargs.get('name','')
+        label = self.kwargs.get('label','')
+        admin_str = name + "_admin"
+        admin_setting = getattr(admin_settings,admin_str,None)
+        if admin_setting is None:
+            list_display = []
+            all_field = ObjectListView.model._meta.local_concrete_fields
+            for fi in all_field:
+                list_display.append(str(fi).split('.')[-1])
+	    list_display.remove('id')
+            kwargs['column_name_list'] = list_display
+        else:
+            kwargs['column_name_list'] = admin_setting['list_display']            
+        kwargs['table_name'] = name
+        kwargs['label_name'] = label    
+        return super(ObjectListView,self).get_context_data(**kwargs)
+
+    def post(self,request,**kwargs):
+        name = self.kwargs.get('name','')
+        admin_str = name + "_admin"
+        page = request.POST.get('page',None)
+        page = int(page)
+        begin = (page-1)*PAGE_NUM
+        end = page*PAGE_NUM - 1
+        admin_setting = getattr(admin_settings,admin_str,None)
+        list_display = admin_setting['list_display']
+        result = ObjectListView.model.objects.values(*list_display)[begin:end]
+        
+        return GenPDF(tablename=name,head=list_display,result=result)
+
+
+class ObjectCreateView(CreateView):
+    pass
+    #fields = ['name']
+   
+
+class ObjectUpdateView(UpdateView):   
+    pass              
+    
+class ObjectDeleteView(DeleteView):
+    pass
+
+@login_required(login_url=LOGIN_URL)  
+def AdminIndex(request,template_name='myadmin/admin_index.html'):
+    return render_to_response(template_name)
+
+
+@login_required(login_url=LOGIN_URL)
+def LabelAppList(request,label=None,template_name='myadmin/app_list.html'):
+    AppListView.model = ContentType
+    AppListView.queryset = ContentType.objects.filter(app_label=label)
+    AppListView.template_name = template_name
+    response = AppListView.as_view()(request,label=label)   
+    return response 
+@login_required(login_url=LOGIN_URL)   
+def ObjectList(request,label=None,name=None,template_name='myadmin/object_list.html'):
+    
+    ObjectListView.model = get_model(label,name)
+    ObjectListView.template_name = template_name
+    response = ObjectListView.as_view()(request,label=label,name=name)   
+    return response  
+@login_required(login_url=LOGIN_URL)
+def ObjectUpdate(request,label=None,name=None,pk=None,template_name='myadmin/myadmin_form.html'):
+    ObjectUpdateView.model = get_model(label,name)
+    ObjectUpdateView.template_name = template_name
+    ObjectUpdateView.success_url = reverse_lazy('label_name_list',kwargs = {'label':label,'name':name})
+    response = ObjectUpdateView.as_view()(request,label=label,pk=pk)
+    return response  
+@login_required(login_url=LOGIN_URL)
+def ObjectDelete(request,label=None,name=None,pk=None,template_name='myadmin/delete_confirm.html'):
+    ObjectDeleteView.model = get_model(label,name)
+    ObjectDeleteView.template_name = template_name
+    ObjectDeleteView.success_url = reverse_lazy('label_name_list',kwargs = {'label':label,'name':name})
+    response = ObjectDeleteView.as_view()(request,pk=pk)
+    return response  
+@login_required(login_url=LOGIN_URL)
+def ObjectCreate(request,label=None,name=None,template_name='myadmin/create_form.html'):
+    ObjectCreateView.model = get_model(label,name)
+    ObjectCreateView.template_name = template_name
+    ObjectCreateView.success_url = reverse_lazy('label_name_list',kwargs = {'label':label,'name':name})
+    response = ObjectCreateView.as_view()(request)
+    return response  
+

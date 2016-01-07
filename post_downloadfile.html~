@@ -1,0 +1,90 @@
+{% extends "./myadmin/admin_base.html" %}
+{% load admintags %}
+
+
+{% block home %}
+<a href="{% url 'label_list' label_name %}" class="tip-bottom">{{ label_name }}</a><a href="{% url 'label_name_list' label_name table_name %}" class="current">{{ table_name }}</a>
+{% endblock%}
+
+{% block right %} 
+        
+<div class="widget-title"> <span class="icon">
+            <div class="checker" id="uniform-title-checkbox"><span class=""><div class="checker focus" id="uniform-title-checkbox"><span class="checked"><input type="checkbox" id="title-checkbox" name="title-checkbox" style="opacity: 0;"></span></div></span></div>
+            </span>
+            <h5>{{ table_name }}</h5>
+<div style="float:right;margin-top:5px;margin-right:100px"><a href="javascript:test();"> <span></span>打印</a></div>
+
+<div class="fr"><a href="{% url 'object_add' label_name table_name %}" class="btn btn-danger btn-mini">添加</a></div>
+</div>
+          <div class="widget-content nopadding">
+  <div id="DataTables_Table_0_wrapper" class="dataTables_wrapper" role="grid">
+            <table class="table table-bordered table-striped with-check">
+              <thead>
+                <tr>
+                  <th><i class="icon-resize-vertical"></i></th>
+		  {% for column_name in column_name_list %}
+			<th>{{ column_name }}</th>
+		  {% endfor %}
+		  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                
+		  {% for object in object_list %}
+		  <tr>
+			<td><div class="checker" id="uniform-undefined"><span class=""><div class="checker" id="uniform-undefined"><span class="checked"><input type="checkbox" style="opacity: 0;"></span></div></span></div></td>
+				
+				{% for column_name in column_name_list %}
+					{% if forloop.first %}
+						<td><a href="{% url 'object_update' label_name table_name object.id%}">{{ object | attrvalue:column_name }}</a></td>
+					{% else %}
+						<td>{{ object | attrvalue:column_name }}</td>
+					{% endif %}
+					
+		  		{% endfor %}
+		
+<td class="taskOptions"><a href="{% url 'object_update' label_name table_name object.id%}" class="tip-top" data-original-title="Update"><i class="icon-ok"></i></a> <a href="{% url 'object_delete' label_name table_name object.id%}" class="tip-top" data-original-title="Delete"><i class="icon-remove"></i></a></td>
+ 		  </tr>
+		  {% endfor %}
+                  
+                 
+              </tbody>
+            </table>
+	    <!--分页 -->
+   	    {% if page_obj%}
+            	{% include "./myadmin/pagination.html" %}
+            {% endif %}
+    </div>
+</div>
+{% endblock%}       
+
+
+{% block headcss %}    
+<script language="javascript" type="text/javascript">
+
+var DownLoadFile = function (options) {
+    var config = $.extend(true, { method: 'post' }, options);
+    var $iframe = $('<iframe id="down-file-iframe" />');
+    var $form = $('<form target="down-file-iframe" method="' + config.method + '" />');
+    $form.attr('action', config.url);
+    for (var key in config.data) {
+        $form.append('<input type="hidden" name="' + key + '" value="' + config.data[key] + '" />');
+    }
+    $iframe.append($form);
+    $(document.body).append($iframe);
+    $form[0].submit();
+    $iframe.remove();
+}
+function test(){
+	DownLoadFile({
+
+	url:"{% url 'label_name_list' label_name table_name %}",
+
+	data:{page:{{page_obj.number}} }
+
+	});
+}
+
+
+</script>        
+{% endblock%} 
