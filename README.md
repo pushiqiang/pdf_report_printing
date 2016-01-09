@@ -7,7 +7,7 @@ pdf表格生成采用reportlab库，ubuntu12以后默认安装有（import repor
 通过重写ListView类视图的post方法实现对post请求的相应<br>
 前台post请求，后台实时查询数据库生成pdf表格返回给前台保存<br>
 
-python 2.7
+python 2.7<br>
 django 1.7
 
 qq:983003089
